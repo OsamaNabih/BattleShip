@@ -28,6 +28,8 @@ TooLate:
 			JS EnterRight
 			cmp bl,9
 			ja EnterRight
+			cmp bl,0
+			je EnterRight
                         mov al,bl 
                         jmp Fin            
 doublekill:             
