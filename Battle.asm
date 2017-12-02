@@ -10,6 +10,7 @@ include Yasmeen.inc
 ;01: Unhit Ship Square
 ;02: Hit Empty Square
 ;03: Hit Ship Square
+org 10h
 DestroyedArr1 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 DestroyedArr2 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 P1Score db 5
@@ -141,7 +142,7 @@ tempVar2 db 00h
 tempVar db 00h   
 PlayerOneMsg db "It's player one's input",10,13,'$'
 PlayerTwoMsg db "It's player two's input",10,13,'$'
-RightMsg db ' Please enter a number from 0 to 15 and then press enter$'
+RightMsg db ' Please enter a number from 1 to 16 and then press enter$'
 ShipOne db ' for ship 1',10,13,'$'
 DifferentShip db 'Place your second ship away from your first',10,13,'$'
 ShipTwo db ' for ship 2',10,13,'$' 
@@ -242,11 +243,6 @@ Call CalculateScore
 CALL ClearStatusBar
 CALL ResetCursorToStatusBar
 
-;DrawRec R1Topleftx, R1Toplefty, R1Ylength, R1Xwidth
-;DrawRec R2Topleftx, R2Toplefty, R2Ylength, R2Xwidth
-;DrawHorizontalLineWithColor
-;DrawFilledRec FRX, FRY, FRH, FRW, P1FRC
-;DrawHorizontalLineWithColor 69, 310, 50, 0
 
 		CALL ClearStatusBar
 		CALL ResetCursorToStatusBar
@@ -271,7 +267,7 @@ MoveOn1:
 
 GameLogic:
 	
-		mov ah,1
+		mov ah,1                ; i keep looping untill i take any kind of Key pressed 
 		int 16h
 		JZ GameLogic
 		
@@ -297,16 +293,16 @@ MoveOn:
 		
 		
 		
-		mov bl,PLayerTurn ; i used bx as i am not sure what will happen in the buffer
-		cmp bl,1  ; should be 0 not one as player1 is the first one but 1 makes more sense as the cannon of player one is under player's two grid 
+		mov bl,PLayerTurn ; 
+		cmp bl,1  
 		JZ Player1
 		JMP Player2
 		
-Player1:
-		Call HideCannon2Proc
-		Call DrawCannon1Proc
-		mov ah,0
-		int 16h 
+Player1: ; here is refered as the player with cannon under Player1 Grid 
+		Call HideCannon2Proc      ;i hide the opponent cannon and appear his own cannon and then check if he is using a special card or the opponent
+		Call DrawCannon1Proc	  ; is using a special card or excaping the game same for Player2, and he can move his cannon if he pressed the attack button which is space
+		mov ah,0				  ; then i go take the Power to Hit the exact square in the Grid 
+		int 16h 					
 		cmp ah, EscapeKey
 		JZ ExitStepNoWin
 		cmp ah,34h  ; . key to attack twice
@@ -321,7 +317,7 @@ Player1:
 		JZ ShowPower1Step
 		JMP GameLogic
 Player2:
-		Call HideCannon1Proc		
+		Call HideCannon1Proc	; Same as the Previous Player with Different controls 
 		Call DrawCannon2Proc				
 		mov ah,0
 		int 16h
@@ -339,22 +335,22 @@ Player2:
 		JZ ShowPower1Step
 		JMP GameLogic
 		
-Attack1:
+Attack1: ;  check if Player on the Right of the map used an attack Card
 		mov al,UseAttackOne
 		Xor al,00000001b
 		mov UseAttackOne,al
-		jmp GameLogic ; not sure if it should become game logic or after attack ; afks 
-Defense1:
+		jmp GameLogic 
+Defense1:; check if Player on the Right of the map used a Defense Card
 		mov al,UseDefenseOne
 		Xor al,00000001b
 		mov UseDefenseOne,al
 		jmp GameLogic
-Attack2: 
+Attack2: ; Check if Player on the left of the map used an attack card 
 		mov al,UseAttackTwo
 		Xor al,00000001b
 		mov UseAttackTwo,al
 		jmp GameLogic
-Defense2:
+Defense2: ; check if player on the left of the map used a defense card 
 		mov al,UseDefenseTwo
 		Xor al,00000001b
 		mov UseDefenseTwo,al
@@ -367,60 +363,60 @@ MoveLeft1Step:   jmp Movleft1
 GameLogicStep:   jmp GameLogic
 SHowPower1Step:  jmp ShowPower1		
 		 
-MovRight1:
+MovRight1: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P1FRX
 		add ax,P1FRW
 		cmp ax,101  ; the end of grid 1 
 		JA GameLogicStep
 		mov cx,16  ; the width of the grid 
-MoveR1:	
+MoveR1:	; Move by calling MoveR1Proc and then jump to take another Key
 		call MoveR1Proc
 		dec cx
 		cmp cx,0
 		JNZ MoveR1
 		JMP GameLogicStep
-MovRight2:
+MovRight2: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P2FRX
 		add ax,P2FRW
 		cmp ax,261
 		JA GameLogicStep
 		mov cx,16
-MoveR2:
+MoveR2:; Move by calling MoveR2Proc and then jump to take another Key
 		Call MoveR2Proc
 		dec cx
 		cmp cx,0
 		JNZ MoveR2
 		JMP GameLogicStep		
-MovLeft1: 
+MovLeft1: ; check if it is possible to move to the left of the grid so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P1FRX
 		cmp ax,47  ; i think it should be the left of the grid minus 16 not sure wether to make it like that or not ; afkslha for now 
 		JBE  GameLogicStep	
 		mov cx,16	 ; the width of the grid
-MoveL1:
+MoveL1: ;move by calling MoveL1Proc and then jump to take another key 
 		call MoveL1Proc
 		dec cx
 		cmp cx,0
 		JNZ MoveL1
 		JMP GameLogicStep
-MovLeft2:
+MovLeft2:; check if it is possible to move to the left of the grid so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P2FRX
 		cmp ax,207 
 		JBE GameLogicStep
 		mov cx,16	
-MoveL2:
+MoveL2: ;move by calling MoveL2Proc and then jump to take another key 
 		call MoveL2Proc
 		dec cx
 		cmp cx,0
 		JNZ MoveL2
 		JMP GameLogicStep
+		; There is always 2 Proc. for every move for each cannon one for each Player 
 		
-		
-ShowPower1:
+ShowPower1: ; i draw the power bar when he presses space to get the right power
 		mov BFYpos,104 ; reset the starting place for the next time we hit a ship
 		call DrawPowerBar
 		JMP ChoosePower1
 Step:	jmp ShowPower1
-ChoosePower1:
+ChoosePower1: ; i keep filling the bar and unfilling it untill the player Fire his projectile 
 		mov ah,1
 		int 16h
 		JNZ TakeValue  ; take the ypos in cx and send it to the game logic so what ever the calculation u want to perform
@@ -439,38 +435,35 @@ UnFill:
 		JNZ UnFill
 		JMP ChoosePower1
 				
-TakeValue:
+TakeValue:  ; if he Fired his Projectile i remove the powerbar then i check wether a defense card was activated by the other opponent so the grid wouldnt take any damage
 			call RemoveBarProc
 			
 			mov ah,0
 			int 16h
 			push ax 
 			
-			mov al,UseDefenseOne
+			mov al,UseDefenseOne ; defense was activated 
 			cmp al,1
 			jz DefenseOne
 			
-			mov al,UseDefenseTwo
+			mov al,UseDefenseTwo; defense was activated 
 			cmp al,1
 			jz DefenseTwo
 			
 			pop ax
 
-		;	cmp ah,2dh
-		;	JZ DefendFromOpponent2 ; i will use my shiled to defend from player 2 The 2 beside Opponent Refers to The Player 1	as the naming convetion is mixed up 
-		;	cmp ah,35h
-		;	JZ DefendFromOpponent1 ; i will use my shiled to defend from Player 1 The 1 beside Opponent Refers to The Player 2 as the naming convetion is mixed up 
+		
 			cmp ah,39h  ; space
 			JNZ Step
 			mov ax,BFYpos ; to put the y pos at a value so i can calculate where to hit in the grid 
 			mov ExplosionY,ax
 			mov al,PlayerTurn
 			cmp al,0
-			jz Stepcannon
-			jmp Player2Cannon
+			jz Stepcannon  ;here i put the x position of the right cannon in a variable to map it on the grid 
+			jmp Player2Cannon;here i put the x position of the right cannon in a variable to map it on the grid 
 AftCannon:	cmp GridSizeOS,4
-			jz StepMappingGrid4x4
-			jmp MappingGrid5x5
+			jz StepMappingGrid4x4 ; here i put the y position of the powerbar in a variable to mape it to the grid4x4
+			jmp MappingGrid5x5 ; here i put the y position of the powerbar in a variable to mape it to the grid5x5
 	
 			
 			
@@ -483,27 +476,21 @@ AftMapping:	CALL CalculateExplosion
 			CALL CalculateScore
 			
 			
-NoShoot:	mov al,UseAttackOne 
+NoShoot:	mov al,UseAttackOne ;check if the player used a attack card 
 			cmp al,1
 			jz AttackOne
 			
-			mov al,UseAttackTwo
+			mov al,UseAttackTwo ;check if the player used a attack card 
 			cmp al,1
 			jz AttackTwo
 			
-		;	mov al,UseDefenseOne
-		;	cmp al,1
-		;	jz DefenseOne
 		
-		;	mov al,UseDefenseTwo
-		;	cmp al,1
-		;	jz DefenseTwo
 		CALL CheckWin
 		MOV BL, GameEnd
 		CMP BL, 1
 		JZ ExitStep2
 			
-ShiledActivate:			mov al,PlayerTurn
+ShiledActivate:			mov al,PlayerTurn ; i change the Player Turn and MoveOn with the game 
 						Xor al,00000001b
 						mov PlayerTurn,al
 			
@@ -641,18 +628,6 @@ Player2Cannon:
 			mov ax,P1FRX
 			mov ExplosionX,ax
 			jmp AftCannon
-;DefendFromOpponent1:
-;		mov al,UseDefenseOne
-;		Xor al,00000001b
-;		mov UseDefenseOne,al
-;		jmp DefenseOneAfterPOP	
-			
-
-;DefendFromOpponent2:
-;		mov al,UseDefenseTwo
-;		Xor al,00000001b
-;		mov UseDefenseTwo,al
-;		jmp DefenseTwoAfterPOP
 
 Exit: 
 	  SwitchToTextMode
@@ -669,9 +644,6 @@ Exit:
 		ADD AL, 14
 		MoveCursorToLocation AL, 7
 		ShowMessage Win
-	  ;ShowMessage SEC_NAME_Data
-	 ; MoveCursorToLocation 20, 7
-	  ;ShowMessage Win
 	  JMP Freeze
 OneWon:	MoveCursorToLocation 14, 7
 		ShowMessage FIR_NAME_Data
@@ -680,15 +652,11 @@ OneWon:	MoveCursorToLocation 14, 7
 		ADD AL, 14
 		MoveCursorToLocation AL, 7
 		ShowMessage Win
-		;ShowMessage fir_NAME_Data
-		;MoveCursorToLocation 20, 7
-		;ShowMessage Win  
 		Freeze:
 NoWin:MoveCursorToLocation 0, 23	
 ReadString P1
 Mov Ah,4ch
 int 21h
-; HLT
 Main endp
 ;.......................................................................................................................................................
 MoveR1Proc      Proc
@@ -1465,7 +1433,7 @@ Explode:
 		ADD DX, GridSideLength
 		SUB DX, 2
 		
-		;Stuff added to color the mark properly
+		
 		
 		
 		
