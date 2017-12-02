@@ -10,19 +10,16 @@ include Yasmeen.inc
 ;01: Unhit Ship Square
 ;02: Hit Empty Square
 ;03: Hit Ship Square
-
-PlayerTurnMsg1 DB "Player 1 turn$"
-PlayerTurnMsg2 DB "Player 2 turn$"
-
-org 40h
-
 DestroyedArr1 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 DestroyedArr2 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 P1Score db 5
 P2Score db 5
 FairWarning db 'Take a good look at the grid, then      choose your ship positions$'
+PlayerTurnMsg1 DB "Player 1 turn$"
+PlayerTurnMsg2 DB "Player 2 turn$"
 
 GameEnd DB 0
+
 FRX DW 67       ; the start of the left grid +10, currently 70
 FRY DW 125;was 40 (or 127)
 FRH DW 9
@@ -114,14 +111,14 @@ PLAY 			DB 'Play$'
 CHAT 			DB 'Chat$'
         
 FIR_NAME LABEL BYTE
-FIR_NAME_SIZE db 30
+FIR_NAME_SIZE db 15
 FIR_NAME_ACTUAL_SIZE db ?     
-FIR_NAME_Data db 30 dup('$')
+FIR_NAME_Data db 16 dup('$')
 
 SEC_NAME LABEL BYTE
-SEC_NAME_SIZE db 30
+SEC_NAME_SIZE db 15
 SEC_NAME_ACTUAL_SIZE db ?     
-SEC_NAME_Data db 30 dup('$')
+SEC_NAME_Data db 16 dup('$')
 ;end
 
 ;wagih's input
@@ -329,7 +326,7 @@ Player2:
 		mov ah,0
 		int 16h
 		cmp ah, EscapeKey
-		JZ ExitStep
+		JZ ExitStepNoWin
 		cmp ah,2ch ;  Z Key to Attack Twice
 		Jz Attack2
 		cmp ah,35h  ; / Key to Defend from an opponent 
@@ -890,7 +887,7 @@ HideCannon2Proc  proc
 		ret
 HideCannon2Proc  endp
 ;......................................................................................................................................................	
-DrawSwordP1    proc
+DrawSwordP1    proc		
 		DrawRec 17, 64, 10, 4
 		DrawRec 10, 61, 2 ,18
 		DrawRec 15, 33, 28, 8
@@ -1002,14 +999,6 @@ DrawScores endp
 DrawUI proc
 		Call DrawStatusBarProc
 		Call DrawPlayers
-		;DrawRec R1Topleftx, R1Toplefty, R1Ylength, R1Xwidth
-		;DrawRec R2Topleftx, R2Toplefty, R2Ylength, R2Xwidth
-		;DrawHorizontalLineWithColor 66, 79, 137, 0
-		;DrawFilledRec FRX, FRY, FRH, FRW, FRC
-		 ;To make the rectangle float
-
-		;LabelSquares GridSize, Nums, Grid1LabelColor, Grid1LabelStartX, Grid1LabelStartY  ;Y = 4 for 6x6
-		;LabelSquares GridSize, Nums, Grid2LabelColor, Grid2LabelStartX, Grid2LabelStartY	;X = 23, Y = 4 for 6x6
 
 		DrawGrid P1GridStartX, P1GridStartY, GridSizeOS, GridSideLength	;X = 38, Y = 27 for 6x6, X = 46, Y = 35 for 5x5
 		DrawGrid P2GridStartX, P2GridStartY, GridSizeOS, GridSideLength ;X = 182, Y = 27 for 6x6, X = 190, Y = 35 for 5x5
@@ -1020,7 +1009,7 @@ DrawUI proc
 		RET
 DrawUI endp
 ;......................................................................................................................................................
-ClearStatusBar proc
+ClearStatusBar proc		;Clears the bar by drawing over it in black
 		DrawFilledRec 0, 166, 35, 320, 0
 		RET
 ClearStatusBar endp
@@ -1102,20 +1091,20 @@ Check2:	MOV AH, 1
 		
 MoveDown:
 		 GetCursorInDLDH
-		 CMP DH, 13
+		 CMP DH, 13		;This is the farthest down it can be, so we won't do anything
 		 JAE Check2
 		 MoveCursorToLocation 15, DH
 		 PUSH DX
-		 DisplayChar 0
+		 DisplayChar 0	;Write NULL to remove the old arrow
 		 POP DX
-		 ADD DH, 2
+		 ADD DH, 2		;Move the Y position 2 by 2 downwards
 		 MoveCursorToLocation DL, DH
-		 DisplayChar 16
+		 DisplayChar 16		;Display Arrow
 		 JMP Check2
 		 
 MoveUp:
 		 GetCursorInDLDH
-		 CMP DH, 11
+		 CMP DH, 11		;This is the farthest up it can be, rest of the logic is same as MoveDown
 		 JBE Check2
 		 MoveCursorToLocation 15, DH
 		 PUSH DX
@@ -1224,25 +1213,26 @@ correct2:
 ReadShips endp
 ;......................................................................................................................................................
 DrawWelcomeGrid proc
-		MOV BX, offset model
+		MOV BX, offset model	;Model 1 for a spaced out grid filling up a big portion of the screen, it is changed to 0 later on
+								;in order to fit both grids into the UI
 		MOV CL, 1
 		MOV [BX], CL
-		MOV BX, offset GridSideLength
+		MOV BX, offset GridSideLength	;Spaces out labels require a larger Side Length for the grid's squares
 		MOV CX, 24
 		MOV [BX], CX
 		LabelSquares GridSizeOS, Nums, Grid1LabelColor, 13, 8, model
 		DrawGrid 99, 56, GridSizeOS, GridSideLength
 		
 		MOV BX, offset model
-		MOV CL, 0
+		MOV CL, 0			;Resetting the model for the game UI
 		MOV [BX], CL
 		MOV BX, offset GridSideLength
-		MOV CX, 16
+		MOV CX, 16			;Resetting the side length
 		MOV [BX], CX
 		
 		ShowMessage FairWarning
 		MOV SI, 80
-AGAIN:	;Delay 00, 0ffffh
+AGAIN:	;Delay so the user has enough time to see the grid
 
 		PUSH AX
 		PUSH BX
@@ -1306,7 +1296,7 @@ GREY:	MOV AL, 7
 BLACK:	PUSH DX
 		PUSH CX
 		PUSH AX
-		
+		;Manually drawn points that make up the projectile
 		
 		INC DX
 		INT 10H
@@ -1371,7 +1361,8 @@ NOUNFILL:
 		PUSH SI
 		PUSH DI
 		PUSH BP
-		CALL UpdateMarksProc		;After we've hit our target, we need to re-draw all the marks in case we erased some of them on our way up
+		CALL UpdateMarksProc		;After we've hit our target, we need to re-draw all the marks in case we erase
+									;some of them on our way up
 		POP BP
 		POP DI
 		POP SI
@@ -1411,8 +1402,9 @@ Explode:
 		MOV DX, ExplosionY
 		DEC DX
 		MOV ExplosionY, DX
-		DrawFilledRec ExplosionX, ExplosionY, ExplosionHeight, ExplosionWidth, 41		;We create the effect of an explosion by gradually drawing orange rectangles, each time 
-																						;Increasing the width and height, while decreasing its X position
+		DrawFilledRec ExplosionX, ExplosionY, ExplosionHeight, ExplosionWidth, 41		
+		;We create the effect of an explosion by gradually drawing orange rectangles, each time 
+		;Increasing the width and height, while decreasing its X position
 
 		;Delay
 		PUSH AX
@@ -1442,15 +1434,7 @@ Explode:
 		CMP CX, 6
 		JBE Explode
 		
-		;MOV BX, 20
-		
-		;;DelayMORE:	MOV CX, 00
-		;MOV DX, 0A000H
-		;MOV AH, 86H
-		;INT 15H
-		;DEC BX
-		;CMP BX, 0
-		;JA ;DelayMORE
+	
 		
 		;Delay
 		PUSH AX
@@ -1494,13 +1478,14 @@ Explode:
 		Draw45Line ExplosionX, DX, AX, ExplosionY, MarkColor		;Draw the second line of the X going from bot left to top right
 		RET 
 ShootTorpedo endp
-
+;......................................................................................................................................................
 DrawGridsProc proc
 		DrawGrid P1GridStartX, P1GridStartY, GridSizeOS, GridSideLength
 		DrawGrid P2GridStartX, P2GridStartY, GridSizeOS, GridSideLength
 		RET
 DrawGridsProc endp
-
+;......................................................................................................................................................
+;This proc counts the number of 1's in each player's Array and updates the player's score variable accordingly
 CalculateScore proc
 		MOV AX, GridSizeOS
 		MOV BX, GridSizeOS
@@ -1653,13 +1638,16 @@ ShipSq2:
 		MOV TargetY, AX
 		RET
 CalculateExplosion endp
+;......................................................................................................................................................
+;This procedure is sometimes used for debugging reasons
+;Display3DigitNumInAXProc proc
+;		Display3DigitNumInAX
+;		RET
+;Display3DigitNumInAXProc endp
 
-Display3DigitNumInAXProc proc
-		Display3DigitNumInAX
-		RET
-Display3DigitNumInAXProc endp
-
-
+;......................................................................................................................................................
+;This proc loops on the Array of each player and draws the marks accordingly, whether it was a hit ship or an empty hit 
+;It draws each of them with its respective color
 UpdateMarksProc proc
 		PUSH AX
 		PUSH BX
@@ -1775,29 +1763,14 @@ NEXTIT:
 		
 		RET
 UpdateMarksProc endp
-
+;......................................................................................................................................................
 MarkDamagedProc proc
 		MarkDamaged MarkX1, MarkY1, MarkX2, MarkY2, MarkColor2
 		RET
 MarkDamagedProc endp 
-
-
-ShowMessagePROCP1 proc
-			mov ah,9h
-            mov dx,offset PlayerTurnMsg1
-            int 21h
-			ret
-ShowMessagePROCP1 endp
-
-
-ShowMessagePROCP2 proc
-			mov ah,9h
-            mov dx,offset PlayerTurnMsg2
-            int 21h
-			ret
-ShowMessagePROCP2 endp
-
-
+;......................................................................................................................................................
+;Checks if any player has 0 number of 1s in his array, updates the GameEnd variable accordingly, 0 = no win, 1 = a player one
+;We know which player won since this function is called every turn and we check on the variable each turn
 CheckWin proc
 		MOV BL, P1Score
 		CMP BL, 0
@@ -1819,12 +1792,7 @@ CheckP2:MOV BL, P2Score
 		MOV GameEnd, BL
 E5la3:	RET
 CheckWin endp
-
-GetPlayerName proc
-		
-		RET
-GetPlayerName endp
-
+;......................................................................................................................................................
 DelayProc proc
 		PUSH AX
 		PUSH BX
