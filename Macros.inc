@@ -420,41 +420,6 @@ Fin3:
 			mov tempVar,00h 
 ENDM TakeDirections2
 
-DestroyPiece MACRO Num, PNum
-local DropShip
-local DropEmpty
-local Endit
-            push ax 
-            push bx  
-            push DI
-			PUSH SI
-			MOV SI, 2
-            mov DI,offset DestroyedArr1
-            mov al,PNum
-            mov ah,0
-            mov bl,25
-            mul al
-            mov bl,Num
-            mov bh,00h
-            add bl,al
-            mov ax,0
-            mov al,[bx+DI]
-            cmp al,0
-            je DropEmpty
-            cmp al,1
-            je DropShip 
-            ja EndIt
-DropShip:   
-            mov [bx+DI],si
-            jmp EndIt
-			MOV SI, 3
-DropEmpty:  mov [bx+DI],SI
-EndIt:  POP SI
-		pop DI
-	    pop bx
-	    pop ax
-
-ENDM DestroyPiece
             
 editShip MACRO  
 		            push ax ; this functions works by accessing the destroyedarr array and putting 1s in the places where there are ships
