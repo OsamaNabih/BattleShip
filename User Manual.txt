@@ -1,0 +1,7 @@
+First, the welcome screen appears, press the up & down arrow to navigate your options, then press enter to choose. For phase 1 there are no level options, and pressing the chat wouldn't do anything since it's not yet supported.
+After that, a welcome grid appears showing you the indices of the grid's square. Then you are asked to enter the numbers, followed by the direction the ship will be places in starting from that square.
+For example, 16 A would place the ship in 16, 15 and 14 squares.
+After finishing the input, the game is launched, each player has controls to move the cannon in his turn, use an attack card in his turn, or use a defense card in the opponent's turn. Player 1 controls are WASD for cannon movements, Z for attack card, and X for defense card. Player 2 controls are the arrows keys, the '>' key for attack, and the '?' key for defense.
+The attack card lets you attack twice, the defense card cancels your opponent's attack.
+Position the cannon on the column you want to hit, then press space for the power bar to show, press space again to shoot. Both players share the space bar.
+The player who destroys all enemy ship squares first wins.
