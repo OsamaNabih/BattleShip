@@ -16,16 +16,16 @@ START:                  mov ah,07
                         mov ah,07
                         int 21h
                         mov bh,al
-                        cmp bh,0Dh
-                        jz Toolate
+                        cmp bh,0Dh  ;Check if the user's second input is an Enter
+                        jz Toolate   ; if not complete and jump to the double digit parser
                         mov ah,07
                         int 21h 
 			jmp doublekill
 TooLate:
                         cmp al,0Dh
-                        jnz EnterRight 
+                        jnz EnterRight ; if the first input is also an enter, query again for input
 			sub bl,48
-			JS EnterRight
+			JS EnterRight ; if the number is less than 48, more than 9 or 0 it will query again for input
 			cmp bl,9
 			ja EnterRight
 			cmp bl,0
@@ -37,25 +37,25 @@ doublekill:
                         jnz EnterRight 
 			push bx
   			add bl,bh	
-			cmp bl,96
+			cmp bl,96  ;if the input is 00 it will query again for input
 			pop bx
 			jz EnterRight
 			sub bl,48
 			JS EnterRight
 			sub bh,48  
-			JS EnterRight
+			JS EnterRight ; if any of the numbers are less than 48 ascii jump
                         mov al,bl
                         mov ah,10
                         mul ah
-                        add al,bh
+                        add al,bh 
 			push bx
 			mov bl,Num 
-			cmp bl,4
+			cmp bl,4 ; jump to different labels for different levels
 			pop bx
 			jnz Five
                         
 Four:			
-			cmp al,16
+			cmp al,16 
 			ja EnterRight
 			jmp Fin			
 
@@ -66,7 +66,7 @@ Five:
 EnterRight:              
 
                         mov ah,09h
-                        mov dx, offset RightMsg
+                        mov dx, offset RightMsg ; query user again for input
                         int 21h 
 			mov ah,2
 			mov dl,10
@@ -103,19 +103,19 @@ StartTake:
                       mov bl,P13Ship[0]
 		      push ax
  		      mov al,GridSize
-		      add al,GridSize
+		      add al,GridSize ; for the 3 place ship, you need the ship to start at the third line (2* grid size) to have a valid up direction
 		      mov CheckUpThree, al
 		      pop ax
 		      push dx
 		      mov dl,P13Ship[0]
-                      cmp dl,CheckUpThree
+                      cmp dl,CheckUpThree  ; if the ship has a valid up position check it, if not check down
 		      pop dx
                       ja CheckUp 
 CheckDown:               
-                      cmp cl,1Fh
+                      cmp cl,1Fh ; if the input is not down, jmp
                       jnz intmp2
                       push ax
-                      mov al,P13Ship
+                      mov al,P13Ship ;if it is then we input the number in pship[0] and its grid size multiples in 1 and 2
 		      add al,GridSize 
                       mov P13Ship[1],al
                       add al,GridSize 
@@ -125,10 +125,10 @@ CheckDown:
 intjump1:
 				jmp starttake
 intmp2:
-		      push ax
+		      push ax ;if the input comes from the check down but has a valid check up position, EX 1 2 3 4 5, 3 has both up and down available to it
  		      mov al,GridSize
 		      add al,GridSize
-		      mov CheckUpThree, al
+		      mov CheckUpThree, al ;check for a valid up position
 		      pop ax
 		      push dx
 		      mov dl,P13Ship[0]
@@ -140,7 +140,7 @@ CheckUp:
                       cmp cl,11h
                       jnz checkLeftRight
                       push ax
-                      mov al,P13Ship
+                      mov al,P13Ship ;again input the number in the zero position and its gridsize multiples(negative here as we are going up not down)
 		      sub al,GridSize 
                       mov P13Ship[1],al
                       sub al,GridSize 
@@ -156,8 +156,8 @@ CheckRight:
 		      push bx
                       mov al,P13Ship[0]
                       mov ah,0 
-		      mov bl, gridsize
-		      div bl
+		      mov bl, gridsize ; To check right i divid by the grid size and then check if its zero or grid size minus one, if its not i add the shi
+		      div bl ; for example 1 2 3 4 5 will be 1 2 3 4 0 , i can't have a 3 place ship in 4 or 0 positions
 		      cmp ah,0
 		      je MiddleWare41
 		      mov bl,gridsize
@@ -173,7 +173,7 @@ MiddleWare41:
 			  jmp CheckLeft
 AfterMiddleWare41:
                       cmp cl,20h
-                      jnz MiddleWare
+                      jnz MiddleWare ;i then add the ship by getting the input in 0 position and +1 for each other position
                       push ax
                       mov al,P13Ship
 		      add al,1
@@ -184,9 +184,9 @@ AfterMiddleWare41:
 CheckLeft:          
 		      push ax
 		      push bx
-                      mov al,P13Ship[0]
+                      mov al,P13Ship[0]  ; To check left i divide by the grid size and then check if its one or two ,if its not i add the ship
                       mov ah,0 
-		      mov bl,gridsize
+		      mov bl,gridsize ; for example 1 2 3 4 5 gets 1 2 3 4 0, i don't want 1 or 2 
 		      div bl
 		      cmp ah,1
 		      je MiddleWare42
@@ -206,7 +206,7 @@ AfterMiddleWare42:
 		      push ax
                       mov al,P13Ship
 		      sub al,1
-                      mov P13Ship[1],al
+                      mov P13Ship[1],al ; add ship by input and then minus one
                       sub al,1
                       mov P13Ship[2],al
 		      pop ax             
@@ -253,18 +253,18 @@ CheckNotPlace:
 		      mov al,GridSize
 	              mov bl,GridSize
                       mul bl
-                      sub al,GridSize
+                      sub al,GridSize ; it needs to be one line above the last line to be able to be put in the direction down
                       mov CheckDownTwo,al
 		      pop bx
 		      pop ax
                       mov bl,P12Ship[0]
 		      push dx
 		      mov dl,P12Ship[0]
-                      cmp dl,CheckDownTwo
+                      cmp dl,CheckDownTwo ; if it is then check for down
 		      pop dx
                       jb CheckDown2
 	              push dx
-	              mov dl,P12Ship[0]
+	              mov dl,P12Ship[0] ; if its above grid size (first line) then it can be put up, jump for check up
 	              cmp dl,GridSize
 	              pop dx
                       ja JumpUp
@@ -272,20 +272,20 @@ intermediateJump4:
 			jmp StartTake2  
 JumpUp: 
 		      push dx
-	              mov dl,P12Ship[0]
+	              mov dl,P12Ship[0] ; check for up as above
 	              cmp dl,GridSize
 	              pop dx
                       ja CheckUp2
 		      jmp CheckLeftRightInt
 CheckDown2:               
-                      cmp cl,1Fh
+                      cmp cl,1Fh ; if the position is valid but no input check for up, as some positions are valid for both directions
                       jnz JumpUp
                       push ax     
 		      mov al,P12Ship[0]
 		      cmp al,P13Ship[1]
-		      jz intermediateJmpPop3
+		      jz intermediateJmpPop3 ; We needed another intermediatejmp here as it needed to pop the AX
 	              cmp al,P13Ship[0]
-		      jz intermediateJmpPop3
+		      jz intermediateJmpPop3 ; here we are checking for conflicts between ship 1 and 2, if there's not we input the second ship
 		      cmp al, P13Ship[2]
                       jz intermediateJmpPop3
 		      add al,GridSize 
@@ -308,12 +308,12 @@ intermediateJmpPop3:
 CheckLeftRightInt: 
 				jmp checkLeftRight2
 CheckUp2:                       
-                      cmp cl,11h
+                      cmp cl,11h ; if not up or down check left or right
                       jnz checkLeftRight2
 		      push ax     
 		      mov al,P12Ship[0]
 		      cmp al,P13Ship[1]
-		      jz intermediateJmpPop2
+		      jz intermediateJmpPop2 ; same thing here
 		      cmp al, P13Ship[2]
                       jz intermediateJmpPop2
                       cmp al,P13Ship[0]
@@ -342,7 +342,7 @@ checkLeftRight2:
 intermediateJump1:
 			jmp intermediateJump2
 CheckRight2:           
-		      push bx
+		      push bx ; in here we're going to divide and check if its not zero, if it is not then it can be put right
 		      mov bl,gridsize
 		      div bl
 		      cmp ah,0
@@ -353,7 +353,7 @@ CheckRight2:
 		     push ax     
 		      mov al,P12Ship[0]
 		      cmp al,P13Ship[1]
-		      jz intermediateJmpPop
+		      jz intermediateJmpPop ; same thing above
 		      cmp al, P13Ship[2]
                       jz intermediateJmpPop
                       cmp al,P13Ship[0]
@@ -369,7 +369,7 @@ CheckRight2:
 		      add ah,1
 		      mov P12Ship[1],ah
 		      pop ax
-Pump2:		      cmp ah,0
+Pump2:		      cmp ah,0 ; jump to check left
 		      ja CheckLeft2
 		      jmp MiddleWare2
 intermediateJmpPop:
@@ -380,7 +380,7 @@ intermediateJump:
 	
 CheckLeft2:       
 	      push bx
-		      mov al,P12Ship[0]
+		      mov al,P12Ship[0] ; if its valid then continue
 		      mov ah,0
 		      mov bl,gridsize
 		      div bl
@@ -457,7 +457,7 @@ EndIt:  POP SI
 ENDM DestroyPiece
             
 editShip MACRO  
-		            push ax
+		            push ax ; this functions works by accessing the destroyedarr array and putting 1s in the places where there are ships
                             add bl, [DI]   	
 		            ;mov [bx],1
 			    mov al, 1
