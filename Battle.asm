@@ -10,7 +10,6 @@ include Yasmeen.inc
 ;01: Unhit Ship Square
 ;02: Hit Empty Square
 ;03: Hit Ship Square
-org 10h
 DestroyedArr1 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 DestroyedArr2 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00h
 P1Score db 5
@@ -18,6 +17,16 @@ P2Score db 5
 FairWarning db 'Take a good look at the grid, then      choose your ship positions$'
 PlayerTurnMsg1 DB "Player 1 turn$"
 PlayerTurnMsg2 DB "Player 2 turn$"
+
+;0: Main menu (welcome screen)
+;1: Levels menu
+;2: in game
+;3: chat module
+Screen DB 0
+Level DB 1
+
+
+
 
 GameEnd DB 0
 
@@ -60,7 +69,8 @@ Grid1LabelColor DB 110
 Grid2LabelColor DB 5
 
 
-
+Level1 DB 'Level 1$'
+Level2 DB 'Level 2$'
 NiceShot DB "Nice shot, you damaged a ship$"
 BadShot DB "Oops, you missed the enemy grid$"
 MehShot DB "You have already shot that square$"
@@ -151,10 +161,10 @@ ShipLeft db 'Please enter a suitable direction away from your first ship, WASD f
 GridSize db 4
 ;end
 
-P1FRX DW 47       ; the start of the left grid +10
+P1FRX DW 49     ; the start of the left grid +10
 P1FRY DW 125
 P1FRH DW 10
-P1FRW DW 11 		; i added a pixel so it could be equal to the small box 
+P1FRW DW 11	; i added a pixel so it could be equal to the small box 
 P1FRC DB 9
 
 
@@ -170,15 +180,15 @@ A		equ		1Eh
 S  		equ		1Fh
 D 		equ  	20h
 
-P1R1Topleftx dw 37  ; should be the start of the left grid 	
+P1R1Topleftx dw 40  ; should be the start of the left grid 	
 P1R1Toplefty dw 135
 P1R1Ylength  dw 25
 P1R1Xwidth   dw 30
 
-P1R2Topleftx dw 45  ; the start of the left grid +8 
+P1R2Topleftx dw 48 ; the start of the left grid +8 
 P1R2Toplefty dw 135
 P1R2Ylength  dw 15
-P1R2Xwidth   dw 15
+P1R2Xwidth   dw 14
 
 BTopleftx dw 150  
 BToplefty dw 55
@@ -186,20 +196,20 @@ BYlength  dw 50
 BXwidth   dw 20
 
 
-P2R1Topleftx dw 197  ; should be the start of the left grid 	
+P2R1Topleftx dw 200  ; should be the start of the left grid 	
 P2R1Toplefty dw 135
 P2R1Ylength  dw 25
 P2R1Xwidth   dw 30
 
-P2R2Topleftx dw 205
+P2R2Topleftx dw 208
 P2R2Toplefty dw 135
 P2R2Ylength  dw 15
-P2R2Xwidth   dw 15
+P2R2Xwidth   dw 14
 
-P2FRX DW 207     ; the start of the left grid +10
+P2FRX DW 209    ; the start of the left grid +10
 P2FRY DW 125
 P2FRH DW 10
-P2FRW DW 10
+P2FRW DW 11
 P2FRC DB 9
 
 
@@ -208,6 +218,10 @@ BFEndX dw 169 ; minus the x of the end of the power bar by 1
 BFYpos  dw 104
 PlayerTurn db 0 ; 0 first player , 1 second player  ; should change after every hit is done 
 
+
+
+P1GridEndx dw 111	
+P2GridEndx dw 271
 
 BigTime dw 10
 LittleTime dw 3000
@@ -221,27 +235,13 @@ mov ax,@data
 mov ds,ax
 
 ;SwitchToGraphicsMode
-CLEAR_SCREEN_DOWN
+ScrollUpScreen
 		
 	SwitchToGraphicsMode
 		
 
 	CALL DrawWelcomeScreen
 	CALL SelectMode
-	CLEAR_SCREEN_UP
-	
-	SwitchToGraphicsMode
-	Call DrawWelcomeGrid 
-	
-	MoveCursorToLocation 0, 0
-	CALL ReadShips	   
-	;MoveCursorToLocation 0, 20
-
-SwitchToGraphicsMode
-CALL DrawUI
-Call CalculateScore
-CALL ClearStatusBar
-CALL ResetCursorToStatusBar
 
 
 		CALL ClearStatusBar
@@ -364,10 +364,10 @@ GameLogicStep:   jmp GameLogic
 SHowPower1Step:  jmp ShowPower1		
 		 
 MovRight1: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
-		mov ax,P1FRX
-		add ax,P1FRW
-		cmp ax,101  ; the end of grid 1 
-		JA GameLogicStep
+		mov ax,P1R1Topleftx
+		add ax,P1R1Xwidth
+		cmp ax,P1GridEndx  ; the end of grid 1 
+		JAE GameLogicStep
 		mov cx,16  ; the width of the grid 
 MoveR1:	; Move by calling MoveR1Proc and then jump to take another Key
 		call MoveR1Proc
@@ -376,10 +376,10 @@ MoveR1:	; Move by calling MoveR1Proc and then jump to take another Key
 		JNZ MoveR1
 		JMP GameLogicStep
 MovRight2: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
-		mov ax,P2FRX
-		add ax,P2FRW
-		cmp ax,261
-		JA GameLogicStep
+		mov ax,P2R1Topleftx
+		add ax,P2R1Xwidth
+		cmp ax,P2GridEndx
+		JAE GameLogicStep
 		mov cx,16
 MoveR2:; Move by calling MoveR2Proc and then jump to take another Key
 		Call MoveR2Proc
@@ -388,8 +388,8 @@ MoveR2:; Move by calling MoveR2Proc and then jump to take another Key
 		JNZ MoveR2
 		JMP GameLogicStep		
 MovLeft1: ; check if it is possible to move to the left of the grid so i dont move more than the size of the grid (always be beneath the grid)
-		mov ax,P1FRX
-		cmp ax,47  ; i think it should be the left of the grid minus 16 not sure wether to make it like that or not ; afkslha for now 
+		mov ax,P1R1Topleftx
+		cmp ax,P1GridStartX  ; i think it should be the left of the grid minus 16 not sure wether to make it like that or not ; afkslha for now 
 		JBE  GameLogicStep	
 		mov cx,16	 ; the width of the grid
 MoveL1: ;move by calling MoveL1Proc and then jump to take another key 
@@ -399,8 +399,8 @@ MoveL1: ;move by calling MoveL1Proc and then jump to take another key
 		JNZ MoveL1
 		JMP GameLogicStep
 MovLeft2:; check if it is possible to move to the left of the grid so i dont move more than the size of the grid (always be beneath the grid)
-		mov ax,P2FRX
-		cmp ax,207 
+		mov ax,P2R1Topleftx
+		cmp ax,P2GridStartX 
 		JBE GameLogicStep
 		mov cx,16	
 MoveL2: ;move by calling MoveL2Proc and then jump to take another key 
@@ -601,23 +601,23 @@ G4Row1:
 		jmp AftMapping
 		
 G5Row5:
-		mov ax,107
+		mov ax,99
 		mov ExplosionY,ax
 		jmp AftMapping
 G5Row4:
-		mov ax,91
+		mov ax,83
 		mov ExplosionY,ax
 		jmp AftMapping
 G5Row3:
-		mov ax,75
+		mov ax,67
 		mov ExplosionY,ax
 		jmp AftMapping
 G5Row2:
-		mov ax,59
+		mov ax,51
 		mov ExplosionY,ax
 		jmp AftMapping
 G5row1:
-		mov ax,43
+		mov ax,35
 		mov ExplosionY,ax
 		jmp AftMapping
 Player1Cannon:
@@ -1049,19 +1049,23 @@ Check2:	MOV AH, 1
 		JZ Check2
 		MOV AH, 0
 		INT 16H
-		CMP AL, 13 ;Enter key
-		JZ CheckMode
 		CMP AH, down
 		JZ MoveDown
 		CMP AH, up
 		JZ MoveUp
+		CMP AL, 13 ;Enter key
+		JZ CheckMode
+		;CMP AH, EscapeKey
+		;JZ CheckParent
 		JMP Check2
 		
 MoveDown:
 		 GetCursorInDLDH
 		 CMP DH, 13		;This is the farthest down it can be, so we won't do anything
 		 JAE Check2
-		 MoveCursorToLocation 15, DH
+		  MOV DL, 15
+		 SUB DL, Screen
+		 MoveCursorToLocation DL, DH
 		 PUSH DX
 		 DisplayChar 0	;Write NULL to remove the old arrow
 		 POP DX
@@ -1074,7 +1078,9 @@ MoveUp:
 		 GetCursorInDLDH
 		 CMP DH, 11		;This is the farthest up it can be, rest of the logic is same as MoveDown
 		 JBE Check2
-		 MoveCursorToLocation 15, DH
+		 MOV DL, 15
+		 SUB DL, Screen
+		 MoveCursorToLocation DL, DH
 		 PUSH DX
 		 DisplayChar 0
 		 POP DX
@@ -1083,17 +1089,127 @@ MoveUp:
 		 DisplayChar 16
 		 JMP Check2
 CheckMode: GetCursorInDLDH Macro
+		MOV AL, Screen
+		CMP AL, 1
+		JZ LevelsMenu
 		 CMP DH, 11
-		 JZ PlayMode
+		 JZ LevelSelection
 		 CMP DH, 13
 		 JZ ChatMode
 		 JMP Check2
+LevelsMenu: CMP DH, 11
+			JZ Level1Label
+			MOV AL, 2
+			MOV Level, AL;else it is level 2
+			JMP EnterPlayMode
+Level1Label: MOV AL, 1
+		MOV Level, AL
+		JMP EnterPlayMode
 ChatMode:JMP Check2
 		 
-PlayMode:CLEAR_SCREEN_UP
-		CALL ReadUsernames
+LevelSelection:ScrollUpScreen
+		;ScrollDownScreen
+		CALL DrawLevelsMenu
+		JMP Check2
+EnterPlayMode: Call PlayMode
 		RET
 SelectMode endp
+;......................................................................................................................................................
+SelectLevels proc	 
+FirstLevel: 
+SecondLevel:
+		RET
+SelectLevels endp
+;......................................................................................................................................................
+PlayMode proc
+		Call AdjustVariables
+		
+
+		SwitchToGraphicsMode
+		Call DrawWelcomeGrid 
+		CALL ReadUsernames
+		MoveCursorToLocation 0, 0
+		CALL ReadShips	   
+
+		SwitchToGraphicsMode
+		CALL DrawUI
+		Call CalculateScore
+		RET
+PlayMode endp
+;......................................................................................................................................................
+AdjustVariables proc
+		MOV AL, Level
+		CMP AL, 1
+		JNZ Level2Vars
+		MOV AX, 4		;Grid Size
+		MOV GridSizeOS, AX
+		MOV GridSize, AL
+		MOV AX, 16		;Grid Side Length
+		Mov GridSideLength, AX
+		MOV AX, 47		;First player grid X
+		MOV P1GridStartX, AX
+		MOV AX, 43		;First player and second player grid Y 
+		MOV P1GridStartY, AX
+		MOV P2GridStartY, AX
+		MOV AX, 207		;Second player grid X
+		MOV P2GridStartX, AX
+		JMP VariablesAdjusted	
+Level2Vars:
+		MOV AX, 5		;Grid Size
+		MOV GridSizeOS, AX
+		MOV GridSize, AL
+		MOV AX, 16		;Grid Side Length
+		Mov GridSideLength, AX
+		MOV AX, 47		;First player grid X
+		MOV P1GridStartX, AX
+		MOV AX, 35		;First player and second player grid Y 
+		MOV P1GridStartY, AX
+		MOV P2GridStartY, AX
+		MOV AX, 190		;Second player grid X
+		MOV P2GridStartX, AX
+		MOV AL, 6		;First player label X, first and second player label Y
+		MOV Grid1LabelStartX, AL
+		MOV Grid1LabelStartY, AL
+		MOV Grid2LabelStartY, AL
+		MOV AL, 26		;Second player label X
+		MOV Grid2LabelStartX, AL
+		MOV AX,P2R1Topleftx
+		SUB AX,GridSideLength 
+		MOV P2R1Topleftx,AX
+		MOV AX, P2R2Topleftx 
+		SUB AX, GridSideLength
+		MOV P2R2Topleftx,Ax
+		MOV AX,P2FRX 
+		SUB AX,GridSideLength
+		MOV P2FRX,AX
+		MOV AX,P1GridEndx
+		ADD AX, GridSideLength
+		MOV P1GridEndx,Ax
+		
+		
+
+VariablesAdjusted:
+
+		RET
+AdjustVariables endp
+;......................................................................................................................................................
+DrawLevelsMenu proc
+		CALL DrawFrame
+		MoveCursorToLocation 14, 7
+		ShowMessage GameName
+		MoveCursorToLocation 14, 11
+		DisplayChar 16
+		DisplayChar 32
+		ShowMessage Level1
+		MoveCursorToLocation 14, 13
+		DisplayChar 32
+		DisplayChar 32
+		ShowMessage Level2
+		MoveCursorToLocation 15, 11
+		MOV AL, 1
+		MOV Screen, AL
+		RET
+DrawLevelsMenu endp
 ;......................................................................................................................................................
 ReadShips proc 
 										SwitchToTextMode
@@ -1106,9 +1222,9 @@ ReadShips proc
                     mov ah,09h
                     mov dx, offset ShipOne
                     int 21h
-                    TakeInput 4
+                    TakeInput GridSize
                     add P13Ship[0],al
-                    TakeDirections  P13Ship 4
+                    TakeDirections  P13Ship GridSize
                     mov ah,09h
                     mov dx, offset RightMsg
                     int 21h
@@ -1116,7 +1232,7 @@ ReadShips proc
                     mov dx, offset ShipTwo
                     int 21h 
 StartP12:
-                    TakeInput 4  
+                    TakeInput GridSize 
                     cmp al,P13Ship[0] 
                     je Skip
                     cmp al,P13Ship[1] 
@@ -1130,7 +1246,7 @@ Skip:               mov ah,09h
                     jmp StartP12  
 correct:        
                     add P12Ship[0],al  
-                    TakeDirections2  P12Ship P13Ship 4
+                    TakeDirections2  P12Ship P13Ship GridSize
 		            push bx 
 	                push DI
 		            mov bx,offset DestroyedArr1
@@ -1146,9 +1262,9 @@ correct:
                     mov ah,09h
                     mov dx, offset ShipOne
                     int 21h
-                    TakeInput 5
+                    TakeInput GridSize
                     add P23Ship[0],al
-                    TakeDirections  P23Ship 4 
+                    TakeDirections  P23Ship GridSize
                     mov ah,09h
                     mov dx, offset RightMsg
                     int 21h
@@ -1156,7 +1272,7 @@ correct:
                     mov dx, offset ShipTwo
                     int 21h 
 StartP22:
-                    TakeInput 4
+                    TakeInput GridSize
                     cmp al,P23Ship[0] 
                     je Skip2
                     cmp al,P23Ship[1] 
@@ -1170,7 +1286,7 @@ Skip2:              mov ah,09h
                     jmp StartP22  
 correct2:        
                     add P22Ship[0],al  
-                    TakeDirections2  P22Ship P23Ship 4
+                    TakeDirections2  P22Ship P23Ship GridSize
 		            push bx 
 	                push DI
 		            mov bx,offset DestroyedArr2
@@ -1247,16 +1363,20 @@ Upwards:
 		CMP BL, 1
 		JBE NOUNFILL
 		
-		MOV BH, 0		;In this loop I check if the top of the projectile crosses a grid line, then I change the eraser color to grey instead of black
+		MOV DI, GridSizeOS
+		INC DI
+		;MOV BH, 0		;In this loop I check if the top of the projectile crosses a grid line, then I change the eraser color to grey instead of black
 		MOV SI, P1GridStartY	;We check by starting at the top Y of the grid, and incrementing the side lengths N times, where N is grid size, to check if the projectile
 		DEC SI					;has the same Y
 		SUB SI, GridSideLength
 		
 CHECK:	ADD SI, GridSideLength
-		INC BH
+		;INC BH
+		DEC DI
 		CMP DX, SI
 		JZ GREY
-		CMP BH, 5
+		;CMP BH, 5
+		CMP DI, 0
 		JNZ CHECK
 		MOV AL, 0
 		JMP BLACK
@@ -1433,7 +1553,7 @@ Explode:
 		ADD DX, GridSideLength
 		SUB DX, 2
 		
-		
+
 		
 		
 		
@@ -1485,14 +1605,14 @@ Nope2:
 		CALL DrawScores
 		RET
 CalculateScore endp
-
+;......................................................................................................................................................
 CalculateExplosion proc
 		MOV AL, PlayerTurn
 		CMP AL, 0
 		JZ P2G
 		MOV CX, P1GridStartX
 		JMP YCOORD
-P2G:		MOV CX, P2GridStartX	
+P2G:	MOV CX, P2GridStartX	
 YCOORD: MOV DX, P1GridStartY
 		MOV AX, ExplosionX
 		SUB AX, CX
@@ -1509,6 +1629,7 @@ YCOORD: MOV DX, P1GridStartY
 		MOV AX, GridSideLength
 		MOV AH, 0
 		MOV CL, 2
+		MOV CH, 0
 		DIV CL
 		MOV CL, AL
 		MOV AX, GridSideLength
@@ -1654,6 +1775,12 @@ P2T:	MOV DX, P1GridStartY
 		ADD BP, GridSideLength
 		SUB BP, 2
 		
+		;BX = LeftX
+		;SI = RightX
+		;DX = UpY
+		;BP = DownY
+		
+
 		MOV CH, 0
 Traverse2:	
 		MOV AL, 2
@@ -1700,19 +1827,31 @@ NotHit:
 		ADD BX, GridSideLength
 		ADD SI, GridSideLength
 		INC CH 
-		CMP CH, 4
+		CMP CH, GridSize
 		JNZ NEXTIT
 		ADD DX, GridSideLength
 		ADD BP, GridSideLength
 		MOV CH, 0
-		SUB BX, GridSideLength
-		SUB BX, GridSideLength
-		SUB BX, GridSideLength
+		
+		PUSH CX
+		MOV CL, 0
+MoveBackwards:
 		SUB BX, GridSideLength
 		SUB SI, GridSideLength
-		SUB SI, GridSideLength
-		SUB SI, GridSideLength
-		SUB SI, GridSideLength
+		INC CL
+		CMP CL, GridSize
+		JNZ MoveBackwards
+		
+		POP CX 
+		
+		;SUB BX, GridSideLength
+		;SUB BX, GridSideLength
+		;SUB BX, GridSideLength
+		;SUB BX, GridSideLength
+		;SUB SI, GridSideLength
+		;SUB SI, GridSideLength
+		;SUB SI, GridSideLength
+		;SUB SI, GridSideLength
 
 		
 NEXTIT:		
