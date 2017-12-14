@@ -24,11 +24,17 @@ PlayerTurnMsg2 DB "Player 2 turn$"
 ;3: chat module
 Screen DB 0
 Level DB 1
-
-
-
-
 GameEnd DB 0
+LineStatusRegister equ 3FDH
+
+Divider db '--------------------------------------------------------------------------------$'
+P1CursorX db 00H
+P1CursorY db 00H
+P2CursorX db 00H
+P2CursorY db 13
+InputChar db 'A'
+ReceivedChar db 'A'
+
 
 FRX DW 67       ; the start of the left grid +10, currently 70
 FRY DW 125;was 40 (or 127)
@@ -311,11 +317,11 @@ chk: 	in al,dx
 		cmp ah,34h  ; . key to attack twice
 		Jz Attack1 
 		cmp ah,2dh ; X Key to Defend from an opponent
-		Jz Defense2	
+		Jz Defense2Step
 		cmp ah,Left ; Leftkey 
 		JZ  MoveLeft1Step
 		cmp ah,Right ; rightkey 
-		JZ  MovRight1
+		JZ  MovRight1Step
 		cmp ah,39h  ; space
 		JZ ShowPower1Step
 		JMP GameLogic
@@ -348,7 +354,8 @@ Again1: in al,dx
 		cmp ah,39h  ; space
 		JZ ShowPower1Step
 		JMP GameLogic
-		
+
+Defense2Step: JMP Defense2		
 Attack1: ;  check if Player on the Right of the map used an attack Card
 		mov al,UseAttackOne
 		Xor al,00000001b
@@ -364,18 +371,23 @@ Attack2: ; Check if Player on the left of the map used an attack card
 		Xor al,00000001b
 		mov UseAttackTwo,al
 		jmp GameLogic
+		
+ExitStepNoWin: JMP NoWin
+MoveLeft2Step:   jmp MovLeft2		
+MoveLeft1Step:   jmp Movleft1
+MovRight1Step: JMP MovRight1
+
+GameLogicStep:   jmp GameLogic
+SHowPower1Step:  jmp ShowPower1		
 Defense2: ; check if player on the left of the map used a defense card 
 		mov al,UseDefenseTwo
 		Xor al,00000001b
 		mov UseDefenseTwo,al
 		
 		jmp GameLogic
-ExitStepNoWin: JMP NoWin
+
 ExitStep: JMP Exit
-MoveLeft2Step:   jmp MovLeft2		
-MoveLeft1Step:   jmp Movleft1
-GameLogicStep:   jmp GameLogic
-SHowPower1Step:  jmp ShowPower1		
+	
 		 
 MovRight1: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P1R1Topleftx
@@ -429,7 +441,7 @@ ShowPower1: ; i draw the power bar when he presses space to get the right power
 		mov BFYpos,104 ; reset the starting place for the next time we hit a ship
 		call DrawPowerBar
 		JMP ChoosePower1
-Step:	jmp ShowPower1
+ShowPowerStep:	jmp ShowPower1
 ChoosePower1: ; i keep filling the bar and unfilling it untill the player Fire his projectile 
 		mov bl,PlayerTurn
 		cmp bl,0
@@ -464,7 +476,9 @@ CheckMe2:JNZ TakeValue
 		cmp ax,104
 		JNZ UnFill
 		JMP ChoosePower1
-				
+
+
+ShowPowerStepStep: JMP ShowPowerStep		
 TakeValue:  ; if he Fired his Projectile i remove the powerbar then i check wether a defense card was activated by the other opponent so the grid wouldnt take any damage
 			call RemoveBarProc
 			
@@ -503,7 +517,7 @@ CheckInput:	push ax
 
 		
 			cmp ah,39h  ; space
-			JNZ Step
+			JNZ ShowPowerStepStep
 			mov ax,BFYpos ; to put the y pos at a value so i can calculate where to hit in the grid 
 			mov ExplosionY,ax
 			mov al,PlayerTurn
@@ -1079,21 +1093,19 @@ ReadUsernames proc
 		SHOWMESSAGE FIR_PLAYER_NAME
         READMESSAGE FIR_NAME
 		;Transmit
-		MOV CX, 32 ;Total size of the buffer size + actual size + data
+		MOV CX, 31 ;Total size of the buffer size + actual size + data
 		MOV DI, offset FIR_NAME
 		
 Send:		
-		MOV DX, 3FDH
-AGAIN2:  IN AL, DX
-		AND AL, 00100000b
-		JZ AGAIN2
+		CALL CheckTransmitterHoldingRegister
 
 ;If empty put the VALUE in Transmit Data Register
 		MOV DX, 3F8H
 		MOV AL, [DI]
 		OUT DX, AL
 		INC DI
-		LOOP Send
+		DEC CX
+		JNZ Send
 		
 		MOV DI, offset SEC_NAME
 		MOV CX, 32
@@ -1101,10 +1113,7 @@ AGAIN2:  IN AL, DX
 Receive:
 		
 		;Check that Data Ready
-		MOV DX, 3FDH
-CHK:	IN AL, DX
-		AND AL, 1
-		JZ CHK
+		CALL CheckDataReady
 
 
 ;If ready read the VALUE in Receive Data Register
@@ -1297,7 +1306,7 @@ DrawLevelsMenu proc
 DrawLevelsMenu endp
 ;......................................................................................................................................................
 ReadShips proc 
-										SwitchToTextMode
+				SwitchToTextMode
 			    mov ah,09h
                     mov dx, offset PlayerOneMsg
                     int 21h
@@ -2000,4 +2009,120 @@ INNERL:		DEC BX
 		POP AX
 		RET
 DelayProc endp
+;......................................................................................................................................................
+ConfigurePort proc
+		;Set Divisor Latch Access Bit
+		MOV DX, 3FBH
+		MOV AL, 10000000b
+		OUT DX, AL
+
+		;Set LSB byte of the Baud Rate Divisor Latch register
+		MOV DX, 3F8H
+		MOV AL, 0CH
+		OUT DX, AL
+
+		;Set MSB byte of the Baud Rate Divisor Latch register
+		MOV DX, 3F9H
+		MOV AL, 00H
+		OUT DX, AL
+
+		;Set port configuration
+		MOV DX, 3FBH
+		MOV AL, 00011011b
+			;0:Access to Receiver buffer, Transmitter buffer
+			;0:Set Break disabled
+			;011:Even Parity
+			;0:One Stop Bit
+			;11:8bits
+		OUT DX, AL
+		RET
+ConfigurePort endp
+;......................................................................................................................................................
+RunChat proc
+		Clear_Screen_up
+		MoveCursorToLocation 0, 12
+		ShowMessage Divider
+		MoveCursorToLocation 0, 0
+		MYLOOP:
+			MOV AH, 1 
+			INT 16H
+			JZ Receive2
+	
+			MOV AH, 0
+			INT 16H
+			MOV InputChar, AL
+			MOV CL, P1CursorX
+			MOV CH, P1CursorY
+			MoveCursorToLocation CL, CH
+			CMP InputChar, 13
+			JZ EnterKey
+			JMP Display
+			EnterKey:   
+			MOV BL, 10
+			MOV InputChar, BL
+			Display:
+			DisplayChar InputChar
+			GetCursorInDLDH
+			MOV P1CursorX, DL
+			MOV P1CursorY, DH
+	
+			CMP DH, 11
+			JB CheckReceive
+			MOV DH, 0
+			MOV P1CursorY, DH
+		CLEAR_SCREEN_UP_FROM_TO 0, 0B4Eh	;From (0,0) to (79, 12)
+CheckReceive:
+		;Check that Transmitted Holding Register is Empty
+		CALL CheckTransmitterHoldingRegister
+
+			;If empty put the VALUE in Transmit Data Register
+			MOV DX, 3F8H	;Transmit data register
+			MOV AL, InputChar
+			OUT DX, AL
+	
+			Receive2:
+			;Check that Data Ready
+			MOV DX, 3FDH	;Line Status Register
+			IN AL, DX
+			AND AL, 1
+			JZ MYLOOP
+
+			;If Ready read the Value in Receive data register
+			MOV DX, 03F8H
+			IN AL, DX
+			MOV ReceivedChar, AL
+
+			MOV CL, P2CursorX
+			MOV CH, P2CursorY
+			MoveCursorToLocation CL, CH
+			DisplayChar ReceivedChar
+			GetCursorInDLDH
+			MOV P2CursorX, DL
+			MOV P2CursorY, DH
+	
+			CMP DH, 24
+			JB Done2
+			MOV DH, 13
+			MOV P2CursorY, DH
+			CLEAR_SCREEN_DOWN_FROM_TO 0D00h, 184Fh  ;From (0,13) to (79, 24)
+		Done2:	
+		JMP MYLOOP
+		RET
+RunChat endp
+;......................................................................................................................................................
+CheckTransmitterHoldingRegister proc
+			MOV DX, LineStatusRegister
+AGAIN4:		IN AL, DX
+			AND AL, 00100000b
+			JZ AGAIN4
+		RET
+CheckTransmitterHoldingRegister	endp
+;......................................................................................................................................................
+CheckDataReady proc
+		MOV DX, 3FDH
+CHK2:	IN AL, DX
+		AND AL, 1
+		JZ CHK2
+		RET
+CheckDataReady endp
 end
