@@ -2,7 +2,7 @@ include mymacros.inc
 include Macros.inc
 include Yasmeen.inc
 .model small
-.stack 128
+.stack 256
 
 .data
 ;osama's input
@@ -39,12 +39,13 @@ Divider db '--------------------------------------------------------------------
 P1CursorX db 00H
 P1CursorY db 01H
 P2CursorX db 00H
-P2CursorY db 14
+P2CursorY db 13
 InputChar db 'A'
 ReceivedChar db 'A'
 Waiting db 'Waiting for the other player$'
 ChatMSG DB 'Press F1 to send a chat request$'
 PlayMSG DB 'Press F2 to send a play request$'
+HowToExitChat DB 'Press ESC to exit chat$'
 Level1MSG DB 'Press 1 to select level 1$'
 Level2MSG DB 'Press 2 to select level 2$'
 
@@ -62,8 +63,8 @@ ExplosionWidth DW 1
 ;01: Unhit Ship Square
 ;02: Hit Empty Square
 ;03: Hit Ship Square
-DestroyedArr1 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h
-DestroyedArr2 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h
+DestroyedArr1 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00H
+DestroyedArr2 db 00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h,00h, 00H
 
 
 MarkX1 DW ?
@@ -158,6 +159,7 @@ SEC_NAME_Data db 16 dup('$')
 ;end
 
 ;wagih's input
+var DW ?
 P13Ship db 00h, 99h,99h
 P12Ship db 00h, 99h
 P23Ship db 00h, 99h,99h
@@ -177,7 +179,8 @@ tempVar2 db 00h
 tempVar db 00h   
 PlayerOneMsg db "It's player one's input",10,13,'$'
 PlayerTwoMsg db "It's player two's input",10,13,'$'
-RightMsg db ' Please enter a number from 1 to 16 and then press enter$'
+RightMsg db 'Please enter a number from 1 to 16 and then press enter$'
+RightMsg2 DB 'Please enter a number from 1 to 25 and then press enter$'
 ShipOne db ' for ship 1',10,13,'$'
 DifferentShip db 'Place your second ship away from your first',10,13,'$'
 ShipTwo db ' for ship 2',10,13,'$' 
@@ -263,9 +266,7 @@ mov ds,ax
 ScrollUpScreen
 	CALL ConfigurePorts
 	CALL ReadUsernames
-	
-	
-		
+	org 50d
 	CALL DrawMainMenu
 	;CALL DrawWelcomeScreen
 	;CALL SelectMode
@@ -276,96 +277,135 @@ ScrollUpScreen
 		
 		
 		
-		MOV BL, PlayerTurn
-		MOV BH, 0
-		CMP BL, 0
-		JZ Turn11
+	;	MOV BL, PlayerTurn
+	;	MOV BH, 0
+	;	CMP BL, 0
+	;	JZ Turn11
 		
-		ShowMessage SEC_NAME_Data
-		Mov AL, SEC_NAME_ACTUAL_SIZE
-		MoveCursorToLocation AL, 21
-		JMP MoveOn1
+	;	ShowMessage SEC_NAME_Data
+	;	Mov AL, SEC_NAME_ACTUAL_SIZE
+	;	MoveCursorToLocation AL, 21
+	;	JMP MoveOn1
 		
-Turn11: Mov AL, FIR_NAME_ACTUAL_SIZE
-		MoveCursorToLocation AL, 21 
-MoveOn1:	
+;Turn11: Mov AL, FIR_NAME_ACTUAL_SIZE
+;		MoveCursorToLocation AL, 21 
+;MoveOn1:	
 
 
 
 
-
-;MOV AL, 1
-;MOV HostGuest, AL
 GameLogic:
-	
-		mov ah,1                ; i keep looping untill i take any kind of Key pressed 
-		int 16h
-		JZ GameLogic
-		
-		
 		CALL ClearStatusBar
 		CALL ResetCursorToStatusBar
-		MOV BH, 0
-		MOV BL, PlayerTurn
-		CMP BL, HostGuest
+		MOV BH, PLayerTurn
+		CMP BH, HostGuest
 		JNZ Turn1
 	    ShowMessage SEC_NAME_Data
 		Mov AL, SEC_NAME_ACTUAL_SIZE
-		MoveCursorToLocation AL, 21
+		MoveCursorToLocation AL, 24
 		ShowMessage Turn
-		JMP MoveOn
-		
-Turn1: ShowMessage FIR_NAME_Data
-		Mov AL, FIR_NAME_ACTUAL_SIZE
-		MoveCursorToLocation AL, 21
-		ShowMessage Turn
-MoveOn:		
-		
-		
-		
-		
-		mov bl,PLayerTurn ; 
-		cmp bl,1  
-		JZ Player1
 		JMP Player2
 		
+Turn1:  ShowMessage FIR_NAME_Data
+		Mov AL, FIR_NAME_ACTUAL_SIZE
+		MoveCursorToLocation AL, 24
+		ShowMessage Turn
+		JMP Player1
+		
 Player1: ; here is refered as the player with cannon under Player1 Grid 
-		Call HideCannon2Proc      ;i hide the opponent cannon and appear his own cannon and then check if he is using a special card or the opponent
-		Call DrawCannon1Proc	  ; is using a special card or excaping the game same for Player2, and he can move his cannon if he pressed the attack button which is space
-		mov ah,0				  ; then i go take the Power to Hit the exact square in the Grid 
-		int 16h 					
-		cmp ah, EscapeKey
-		JZ ExitStepNoWin
-		cmp ah,34h  ; . key to attack twice
-		Jz Attack1 
+		Call HideCannon1Proc      ;i hide the opponent cannon and appear his own cannon and then check if he is using a special card or the opponent
+		Call DrawCannon2Proc	  ; is using a special card or excaping the game same for Player2, and he can move his cannon if he pressed the attack button which is space
+		; then i go take the Power to Hit the exact square in the Grid 
+KeepTaking1:
+
+CheckReceiving:		
+		MOV DX, 3FDH	;Line Status Register
+		IN AL, DX
+		AND AL, 1
+		JZ NoReceived
+
+		;If Ready read the Value in Receive data register
+		MOV DX, 03F8H
+		IN AL, DX
+		MOV AH, AL
 		cmp ah,2dh ; X Key to Defend from an opponent
-		Jz Defense2	
-		cmp ah,Left ; Leftkey 
-		JZ  MoveLeft1Step
-		cmp ah,Right ; rightkey 
-		JZ  MovRight1
-		cmp ah,39h  ; space
-		JZ ShowPower1Step
-		JMP GameLogic
-Player2:
-		Call HideCannon1Proc	; Same as the Previous Player with Different controls 
-		Call DrawCannon2Proc				
+		JZ Defense1Step
+NoReceived:		
+		
+		mov ah,1                ; i keep looping untill i take any kind of Key pressed 
+		int 16h
+		JZ CheckReceiving 
+		
 		mov ah,0
 		int 16h
-		cmp ah, EscapeKey
-		JZ ExitStepNoWin
-		cmp ah,2ch ;  Z Key to Attack Twice
-		Jz Attack2
-		cmp ah,35h  ; / Key to Defend from an opponent 
-		Jz Defense1
+
+		Call CheckTransmitterHoldingRegister
+		
+		mov dx,3F8h
+		mov al,ah
+		out dx,al
+		
+		
+		cmp ah, F3
+		JZ ExitStepNoWinStep
+		cmp ah,2ch  ; Z key to attack twice
+		Jz Attack1 
 		cmp ah,A ; letter A
 		JZ  MoveLeft2Step
 		cmp ah,D ; rightkey 
-		JZ  MovRight2
+		JZ  MovRight2Step
 		cmp ah,39h  ; space
 		JZ ShowPower1Step
-		JMP GameLogic
+		JMP KeepTaking1
 		
+Player2:
+		Call HideCannon2Proc	; Same as the Previous Player with Different controls 
+		Call DrawCannon1Proc
+KeepTaking2:
+		mov ah,1                ; i keep looping untill i take any kind of Key pressed 
+		int 16h
+		JZ CheckReceiving2
+		
+		mov ah,0
+		int 16h
+
+		Call CheckTransmitterHoldingRegister
+		
+		mov dx,3F8h
+		mov al,ah
+		out dx,al
+CheckReceiving2:			
+		MOV DX, 3FDH	;Line Status Register
+		IN AL, DX
+		AND AL, 1
+		JZ NoReceived2		
+		
+		;If Ready read the Value in Receive data register
+		MOV DX, 03F8H
+		IN AL, DX
+		MOV AH, AL
+		cmp ah, F3
+		JZ ExitStepNoWin
+		cmp ah,2ch ;  Z Key to Attack Twice
+		Jz Attack2
+		cmp ah,A ; letter A
+		JZ  MoveLeft1Step
+		cmp ah,D ; rightkey 
+		JZ  MovRight1
+		cmp ah,39h  ; space
+		JZ ShowPower1Step
+		JMP KeepTaking2
+		
+NoReceived2:		
+		cmp ah,2dh ; X Key to Defend from an opponent
+		JZ Defense2
+		JMP KeepTaking2
+Defense1Step: JMP Defense1
+ExitStepNoWinStep: JMP ExitStepNoWin
+MovRight2Step: JMP MovRight2	
+MoveLeft2Step:   jmp MovLeft2		
+MoveLeft1Step:   jmp Movleft1	
+SHowPower1Step:  jmp ShowPower1	
 Attack1: ;  check if Player on the Right of the map used an attack Card
 		mov al,UseAttackOne
 		Xor al,00000001b
@@ -389,10 +429,9 @@ Defense2: ; check if player on the left of the map used a defense card
 		jmp GameLogic
 ExitStepNoWin: JMP NoWin
 ExitStep: JMP Exit
-MoveLeft2Step:   jmp MovLeft2		
-MoveLeft1Step:   jmp Movleft1
+
 GameLogicStep:   jmp GameLogic
-SHowPower1Step:  jmp ShowPower1		
+	
 		 
 MovRight1: ; check if it is possible to move to the right so i dont move more than the size of the grid (always be beneath the grid)
 		mov ax,P1R1Topleftx
@@ -447,58 +486,133 @@ ShowPower1: ; i draw the power bar when he presses space to get the right power
 		call DrawPowerBar
 		JMP ChoosePower1
 Step:	jmp ShowPower1
+ShowPowerStep:	jmp ShowPower1
 ChoosePower1: ; i keep filling the bar and unfilling it untill the player Fire his projectile 
+		mov bl,PlayerTurn
+		CMP BL, HostGuest
+		JNZ MyTurn
+		
+		;Check if received
+		MOV DX, 3FDH
+		IN AL, DX
+		AND AL, 1
+		JNZ TakeValue
+		JMP CheckMe
+		
+MyTurn:
 		mov ah,1
 		int 16h
 		JNZ TakeValue  ; take the ypos in cx and send it to the game logic so what ever the calculation u want to perform
-		call FillBarProc
+CheckMe:call FillBarProc
 		mov ax,BFYpos
 		cmp ax,56
-		JNZ ChoosePower1
+		JNZ ChoosePower1		
 		
 UnFill:
+		mov bl,PlayerTurn
+		CMP BL, HostGuest
+		JZ CheckMe2
+MyTurn2:
 		mov ah,1
 		int 16h
-		JNZ TakeValue
+		JMP CheckMe2
+Recv:	MOV DX, 3FDH
+		IN AL, DX
+		AND AL, 1
+		
+CheckMe2:JNZ TakeValue
 		call UnFillBarProc
 		mov ax,BFYpos
 		cmp ax,104
 		JNZ UnFill
 		JMP ChoosePower1
-				
+
+
+ShowPowerStepStep: JMP ShowPowerStep		
 TakeValue:  ; if he Fired his Projectile i remove the powerbar then i check wether a defense card was activated by the other opponent so the grid wouldnt take any damage
 			call RemoveBarProc
+			mov bl,PlayerTurn
+			CMP BL, HostGuest
+			jnz TakeBuffer
+;Read the value received in data register
+			CALL CheckDataReady
+			MOV DX, 03F8H
+			IN AL, DX
+			MOV AH, AL
+			PUSH AX 
+			CALL CheckTransmitterHoldingRegister
+			mov dx,3F8h
+			mov al,ah
+			out dx,al
+			POP AX
+			JMP CheckInput
 			
+TakeBuffer:			
 			mov ah,0
 			int 16h
-			push ax 
+			
+			CALL CheckTransmitterHoldingRegister
+			
+			mov dx,3F8h
+			mov al,ah
+			out dx,al
+			
+			
+			
+			CALL CheckDataReady
+			MOV DX, 03F8H
+			IN AL, DX
+			
+CheckInput:	push ax 
 			
 			mov al,UseDefenseOne ; defense was activated 
 			cmp al,1
-			jz DefenseOne
+			jz DefenseOneStep
 			
 			mov al,UseDefenseTwo; defense was activated 
 			cmp al,1
-			jz DefenseTwo
+			jz DefenseTwoStep
 			
 			pop ax
 
 		
 			cmp ah,39h  ; space
-			JNZ Step
-			mov ax,BFYpos ; to put the y pos at a value so i can calculate where to hit in the grid 
-			mov ExplosionY,ax
-			mov al,PlayerTurn
-			cmp al,0
-			jz Stepcannon  ;here i put the x position of the right cannon in a variable to map it on the grid 
-			jmp Player2Cannon;here i put the x position of the right cannon in a variable to map it on the grid 
+			JNZ ShowPowerStepStep
+			
+			;Trying to fix the bar delay
+			MOV BL, PLayerTurn
+			CMP BL, HostGuest
+			JNZ SendExplosionY
+			CALL CheckDataReady
+			MOV DX, 03F8H
+			IN AL, DX
+			
+			MOV AH, 0
+			MOV ExplosionY, AX
+			JMP Shoot
+SendExplosionY: mov ax,BFYpos ; to put the y pos at a value so i can calculate where to hit in the grid
+				mov ExplosionY,ax
+				PUSH AX
+				CALL CheckTransmitterHoldingRegister
+				mov dx,3F8h
+				POP AX
+				out dx,al
+				
+Shoot:			
+			MOV AL, PlayerTurn
+			CMP AL, HostGuest
+			JNZ Stepcannon
+			JMP Step2cannon
+			
+			
+			
 AftCannon:	cmp GridSizeOS,4
 			jz StepMappingGrid4x4 ; here i put the y position of the powerbar in a variable to mape it to the grid4x4
 			jmp MappingGrid5x5 ; here i put the y position of the powerbar in a variable to mape it to the grid5x5
 	
 			
 			
-			
+DefenseOneStep: JMP DefenseOne			
 			
 			
 			
@@ -526,7 +640,8 @@ ShiledActivate:			mov al,PlayerTurn ; i change the Player Turn and MoveOn with t
 						mov PlayerTurn,al
 			
 Continue:	JMP GameLogicStep  ; Continue is a label for the cards only 
-StepMappingGrid4x4: jmp MappingGrid4x4		
+StepMappingGrid4x4: jmp MappingGrid4x4	
+DefenseTwoStep: JMP DefenseTwo		
 AttackOne:	call UseSwordTwo ; here we use two as osos named them from the convention of the left game and right game and i play it from the first turn
 			add al,3  ; any number besides 1 or 0 
 			mov UseAttackOne,al
@@ -548,7 +663,8 @@ DefenseOneAfterPop:   ; this labbel that i push ax before and i have to pop in e
 DisAttackTwo:mov al,UseDefenseOne
 			add al,3  ; any number besides 1 or 0 
 			mov UseDefenseOne,al
-			Jmp ShiledActivate;
+			Jmp ShiledActivate
+Stepcannon: jmp Player1Cannon
 DefenseTwo:
 			
 			pop ax
@@ -561,8 +677,10 @@ DisAttackOne:mov al,UseDefenseTwo
 			add al,3  ; any number besides 1 or 0 
 			mov UseDefenseTwo,al
 			Jmp ShiledActivate;
-Stepcannon: jmp Player1Cannon
+
+Step2cannon: JMP Player2Cannon
 ExitStep2: JMP ExitStep3
+
 DisableAttackOne:
 				Call UseSwordTwo
 				mov al,UseAttackOne
@@ -610,7 +728,14 @@ MappingGrid5x5:
 		 jmp NoHit
 ExitStep3: JMP Exit		 
 	 
-NoHit: 
+NoHit: 	CALL ClearStatusBar
+		CALL ResetCursorToStatusBar
+		ShowMessage BadShot
+		Mov AX, 1000
+		MOV BigTime, AX
+		MOV AX, 3000
+		MOV LittleTime, AX
+		CALL DelayProc
 		jmp NoShoot ; shiled activate doesnt hit and change the turn so it make sense to jump on it without changing the name 
 G4Row4:
 		mov ax,91
@@ -666,22 +791,22 @@ Exit:
 	  SwitchToGraphicsMode
 	  Call DrawFrame
 	  MOV BL, PlayerTurn
-	  CMP BL, 0
-	  JZ OneWon
-	  MoveCursorToLocation 14, 7
+	  CMP BL, HostGuest
+	  JNZ OneWon
+	  MoveCursorToLocation 14, 4
 	   ShowMessage sec_NAME_Data
 	  Mov AL, SEC_NAME_ACTUAL_SIZE
 		INC AL
 		ADD AL, 14
-		MoveCursorToLocation AL, 7
+		MoveCursorToLocation AL, 4
 		ShowMessage Win
 	  JMP Freeze
-OneWon:	MoveCursorToLocation 14, 7
+OneWon:	MoveCursorToLocation 14, 4
 		ShowMessage FIR_NAME_Data
 		Mov AL, FIR_NAME_ACTUAL_SIZE
 		INC AL
 		ADD AL, 14
-		MoveCursorToLocation AL, 7
+		MoveCursorToLocation AL, 4
 		ShowMessage Win
 		Freeze:
 NoWin:MoveCursorToLocation 0, 23	
@@ -944,7 +1069,7 @@ DrawShieldP2 proc
 DrawShieldP2 endp
 ;......................................................................................................................................................
 DrawStatusBarProc  proc
-		MOV DX, 165
+		MOV DX, 189
 		MOV CX, 0
 AgainAgain:	MOV AL, 15
 		MOV AH, 0CH
@@ -961,6 +1086,43 @@ AgainAgain:	MOV AL, 15
 		JMP AgainAgain
 Done:	RET
 DrawStatusBarProc endp
+;......................................................................................................................................................
+DrawPlayersBars	proc
+		MOV DX, 181
+		MOV CX, 0
+AgainAgain2:	MOV AL, 15
+		MOV AH, 0CH
+		INT 10H
+		SUB DX, 8
+		INT 10H
+		ADD DX, 8
+		INC CX
+		CMP CX, 320
+		JZ Done
+		MOV AX, CX
+		MOV BL, 7
+		DIV BL
+		CMP AH, 0
+		JNZ AgainAgain2
+		ADD CX, 2
+		JMP AgainAgain2
+DrawPlayersBars endp 
+;......................................................................................................................................................
+DisplayPlayersChats	proc
+		MoveCursorToLocation 0, 23
+		ShowMessage SEC_NAME_Data
+		MOV DI, offset SEC_NAME
+		INC DI
+		MoveCursorToLocation [DI], 23
+		DisplayChar ':'
+		MoveCursorToLocation 0, 22
+		ShowMessage FIR_NAME_Data
+		MOV DI, offset SEC_NAME
+		INC DI
+		MoveCursorToLocation [DI], 22
+		DisplayChar ':'
+		RET
+DisplayPlayersChats endp
 ;......................................................................................................................................................
 DrawPlayers proc
 		MoveCursorToLocation 7,0
@@ -997,6 +1159,7 @@ DrawScores endp
 ;......................................................................................................................................................
 DrawUI proc
 		Call DrawStatusBarProc
+		CALL DrawPlayersBars
 		Call DrawPlayers
 
 		DrawGrid P1GridStartX, P1GridStartY, GridSizeOS, GridSideLength	;X = 38, Y = 27 for 6x6, X = 46, Y = 35 for 5x5
@@ -1009,12 +1172,12 @@ DrawUI proc
 DrawUI endp
 ;......................................................................................................................................................
 ClearStatusBar proc		;Clears the bar by drawing over it in black
-		DrawFilledRec 0, 166, 35, 320, 0
+		DrawFilledRec 0, 190, 10, 320, 0
 		RET
 ClearStatusBar endp
 ;......................................................................................................................................................
 ResetCursorToStatusBar proc
-		MoveCursorToLocation 0, 21
+		MoveCursorToLocation 0, 24
 		RET
 ResetCursorToStatusBar endp
 ;......................................................................................................................................................
@@ -1049,7 +1212,7 @@ ReadUsernames proc
 		ShowMessage Waiting
 		;CALL Sync
 		
-		MOV CX, 31 ;Total size of the buffer size + actual size + data
+		MOV CX, 17 ;Total size of the buffer size + actual size + data
 		MOV DI, offset FIR_NAME
 		MOV SI, offset SEC_NAME
 Send:		
@@ -1078,18 +1241,15 @@ Send:
 ReadUsernames endp
 ;......................................................................................................................................................
 DrawFrame proc
-		DrawDashedHorizontalLine 94, 208, 43
-		DrawDashedHorizontalLine 94, 208, 76
+		DrawDashedHorizontalLine 94, 208, 19
+		DrawDashedHorizontalLine 94, 208, 52
 
-		DrawDashedVerticalLine 43, 76, 208
-		DrawDashedVerticalLine 43, 76, 94
+		DrawDashedVerticalLine 19, 52, 208
+		DrawDashedVerticalLine 19, 52, 94
 		RET
 DrawFrame endp
 ;......................................................................................................................................................
 PlayMode proc
-		Call AdjustVariables
-		
-
 		SwitchToGraphicsMode
 		Call DrawWelcomeGrid 
 		MoveCursorToLocation 0, 0
@@ -1098,7 +1258,6 @@ PlayMode proc
 		SwitchToGraphicsMode
 		CALL DrawUI
 		Call CalculateScore
-		CALL DisplayArr1
 		RET
 PlayMode endp
 ;......................................................................................................................................................
@@ -1109,8 +1268,6 @@ AdjustVariables proc
 		MOV AX, 4		;Grid Size
 		MOV GridSizeOS, AX
 		MOV GridSize, AL
-		MOV AX, 16		;Grid Side Length
-		Mov GridSideLength, AX
 		MOV AX, 47		;First player grid X
 		MOV P1GridStartX, AX
 		MOV AX, 43		;First player and second player grid Y 
@@ -1123,14 +1280,12 @@ Level2Vars:
 		MOV AX, 5		;Grid Size
 		MOV GridSizeOS, AX
 		MOV GridSize, AL
-		MOV AX, 16		;Grid Side Length
-		Mov GridSideLength, AX
 		MOV AX, 47		;First player grid X
 		MOV P1GridStartX, AX
 		MOV AX, 35		;First player and second player grid Y 
 		MOV P1GridStartY, AX
 		MOV P2GridStartY, AX
-		MOV AX, 190		;Second player grid X
+		MOV AX, 191		;Second player grid X
 		MOV P2GridStartX, AX
 		MOV AL, 6		;First player label X, first and second player label Y
 		MOV Grid1LabelStartX, AL
@@ -1149,14 +1304,32 @@ Level2Vars:
 		MOV P2FRX,AX
 		MOV AX,P1GridEndx
 		ADD AX, GridSideLength
-		MOV P1GridEndx,Ax
-		
-		
-
+		MOV P1GridEndx,AX
 VariablesAdjusted:
 
 		RET
 AdjustVariables endp
+;......................................................................................................................................................
+ResetVariables proc
+		MOV AX, 4		;Grid Size
+		MOV GridSizeOS, AX
+		MOV GridSize, AL
+		MOV AX, 47		;First player grid X
+		MOV P1GridStartX, AX
+		MOV AX, 43		;First player and second player grid Y 
+		MOV P1GridStartY, AX
+		MOV P2GridStartY, AX
+		MOV AX, 207		;Second player grid X
+		MOV P2GridStartX, AX
+		MOV AL, 0
+		MOV P1CursorX, AL
+		MOV P2CursorX, AL
+		MOV AL, 1
+		MOV P1CursorY, AL
+		MOV AL, 13
+		MOV P2CursorY, AL
+		RET
+ResetVariables endp
 ;......................................................................................................................................................
 DrawLevelsMenu proc
 		CALL DrawFrame
@@ -1177,25 +1350,20 @@ DrawLevelsMenu proc
 DrawLevelsMenu endp
 ;......................................................................................................................................................
 ReadShips proc 
-										SwitchToTextMode
-			    mov ah,09h
-                    mov dx, offset PlayerOneMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset RightMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset ShipOne
-                    int 21h
+					SwitchToTextMode
+                    ShowMessage PlayerOneMsg
+					MOV BL, Level
+					CMP BL, 2
+					JZ OneTo25
+                    ShowMessage RightMsg
+					JMP TakeShips
+OneTo25:			ShowMessage RightMsg2
+TakeShips:          ShowMessage ShipOne
                     TakeInput GridSize
                     add P13Ship[0],al
                     TakeDirections  P13Ship GridSize
-                    mov ah,09h
-                    mov dx, offset RightMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset ShipTwo
-                    int 21h 
+                    ShowMessage RightMsg
+                    ShowMessage ShipTwo 
 StartP12:
                     TakeInput GridSize 
                     cmp al,P13Ship[0] 
@@ -1205,9 +1373,7 @@ StartP12:
                     cmp al,P13Ship[2] 
                     je Skip
                     jmp correct		
-Skip:               mov ah,09h
-                    mov dx, offset DifferentShip
-                    int 21h
+Skip:               ShowMessage DifferentShip
                     jmp StartP12  
 correct:        
                     add P12Ship[0],al  
@@ -1218,66 +1384,50 @@ correct:
                     mov DI, offset P13Ship  
                     dec bx
                     editShip
-                    mov ah,09h
-                    mov dx, offset PlayerTwoMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset RightMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset ShipOne
-                    int 21h
-                    TakeInput GridSize
-                    add P23Ship[0],al
-                    TakeDirections  P23Ship GridSize
-                    mov ah,09h
-                    mov dx, offset RightMsg
-                    int 21h
-                    mov ah,09h
-                    mov dx, offset ShipTwo
-                    int 21h 
-StartP22:
-                    TakeInput GridSize
-                    cmp al,P23Ship[0] 
-                    je Skip2
-                    cmp al,P23Ship[1] 
-                    je Skip2	
-                    cmp al,P23Ship[2] 
-                    je Skip2
-                    jmp correct2		
-Skip2:              mov ah,09h
-                    mov dx, offset DifferentShip
-                    int 21h
-                    jmp StartP22  
-correct2:        
-                    add P22Ship[0],al  
-                    TakeDirections2  P22Ship P23Ship GridSize
-		            push bx 
-	                push DI
-		            mov bx,offset DestroyedArr2
-                    mov DI, offset P23Ship
-                    dec bx
-                    editShip
+					
+					;CALL Sync
+					ShowMessage Waiting
+					MOV AL, GridSize
+					MUL AL
+					MOV CX, AX
+					MOV DI, offset DestroyedArr1
+					MOV SI, offset DestroyedArr2
+SendLoop:
+					CALL CheckTransmitterHoldingRegister
+					;If empty put the VALUE in Transmit Data Register
+					MOV DX, 3F8H
+					MOV AL, [DI]
+					OUT DX, AL
+					INC DI
+		
+;Receive
+					;Check that Data Ready
+					CALL CheckDataReady
+
+					;If ready read the VALUE in Receive Data Register
+					MOV DX, 03F8H
+					IN AL, DX
+					MOV [SI], AL
+					INC SI
+					DEC CX
+					JNZ SendLoop
 					RET
 ReadShips endp
 ;......................................................................................................................................................
 DrawWelcomeGrid proc
-		MOV BX, offset model	;Model 1 for a spaced out grid filling up a big portion of the screen, it is changed to 0 later on
+			;Model 1 for a spaced out grid filling up a big portion of the screen, it is changed to 0 later on
 								;in order to fit both grids into the UI
 		MOV CL, 1
-		MOV [BX], CL
-		MOV BX, offset GridSideLength	;Spaces out labels require a larger Side Length for the grid's squares
-		MOV CX, 24
-		MOV [BX], CX
+		MOV model, CL
+		MOV CX, 24	;Spaces out labels require a larger Side Length for the grid's squares
+		MOV GridSideLength, CX
 		LabelSquares GridSizeOS, Nums, Grid1LabelColor, 13, 8, model
 		DrawGrid 99, 56, GridSizeOS, GridSideLength
 		
-		MOV BX, offset model
-		MOV CL, 0			;Resetting the model for the game UI
-		MOV [BX], CL
-		MOV BX, offset GridSideLength
+		MOV CL, 0		;Resetting the model for the game UI
+		MOV model, CL
 		MOV CX, 16			;Resetting the side length
-		MOV [BX], CX
+		MOV GridSideLength, CX
 		
 		ShowMessage FairWarning
 		MOV SI, 80
@@ -1573,8 +1723,8 @@ CalculateScore endp
 ;......................................................................................................................................................
 CalculateExplosion proc
 		MOV AL, PlayerTurn
-		CMP AL, 0
-		JZ P2G
+		CMP AL, HostGuest
+		JNZ P2G
 		MOV CX, P1GridStartX
 		JMP YCOORD
 P2G:	MOV CX, P2GridStartX	
@@ -1601,8 +1751,8 @@ YCOORD: MOV DX, P1GridStartY
 		MOV AH, 0
 		MUL BL
 		MOV BL, PlayerTurn
-		CMP BL, 0
-		JZ G2
+		CMP BL, HostGuest
+		JNZ G2
 		ADD AX, P1GridStartX
 		JMP CONT
 G2:		ADD AX, P2GridStartX
@@ -1638,8 +1788,8 @@ CONT:	MOV CH, 0
 		MOV AH, 0
 		MUL BL
 		MOV BL, PlayerTurn
-		CMP BL, 0
-		JZ G22
+		CMP BL, HostGuest
+		JNZ G22
 		ADD AX, P1GridStartY
 		JMP CONT2
 G22:	ADD AX, P2GridStartY
@@ -1666,8 +1816,8 @@ CONT2:	MOV CH, 0
 		
 		
 		MOV BL, PlayerTurn
-		CMP BL, 0
-		JZ DEST2
+		CMP BL, HostGuest
+		JNZ DEST2
 		MOV DI, offset DestroyedArr1
 		JMP CONTINUEOS
 DEST2:	MOV DI, offset DestroyedArr2
@@ -1713,8 +1863,8 @@ UpdateMarksProc proc
 		
 		
 		MOV AL, PlayerTurn
-		CMP AL, 0
-		JZ P1T
+		CMP AL, HostGuest
+		JNZ P1T
 		MOV DI, offset DestroyedArr1
 		MOV BX, P1GridStartX
 		INC BX
@@ -1808,14 +1958,6 @@ MoveBackwards:
 		
 		POP CX 
 		
-		;SUB BX, GridSideLength
-		;SUB BX, GridSideLength
-		;SUB BX, GridSideLength
-		;SUB BX, GridSideLength
-		;SUB SI, GridSideLength
-		;SUB SI, GridSideLength
-		;SUB SI, GridSideLength
-		;SUB SI, GridSideLength
 
 		
 NEXTIT:		
@@ -1897,24 +2039,28 @@ Sync endp
 RunChat proc
 		SwitchToTextMode
 		Clear_Screen_up
-		MoveCursorToLocation 0, 12
+		MoveCursorToLocation 0, 11
 		ShowMessage Divider
+		CALL DrawExitChat
 		Call DisplayUsernames
+		MoveCursorToLocation 0, 1
 		MYLOOP:
 			MOV AH, 1 
 			INT 16H
-			JZ Receive2
+			JZ Receive2Step
 	
 			MOV AH, 0
 			INT 16H
 			MOV InputChar, AL
+			
 			MOV CL, P1CursorX
 			MOV CH, P1CursorY
 			MoveCursorToLocation CL, CH
 			CMP InputChar, 13	;Enter key scan code
 			JZ EnterKey
 			JMP Display
-MYLOOPSTEP: JMP MYLOOP				
+MYLOOPSTEP: JMP MYLOOP		
+Receive2Step: JMP Receive2		
 EnterKey:   
 			MOV BL, 10
 			MOV InputChar, BL
@@ -1929,11 +2075,11 @@ NotBackspace:
 			MOV P1CursorX, DL
 			MOV P1CursorY, DH
 	
-			CMP DH, 11		
+			CMP DH, 11
 			JB CheckReceive
 			MOV DH, 1
 			MOV P1CursorY, DH
-		CLEAR_SCREEN_UP_FROM_TO 0000, 0B4Eh	;From (0,1) to (79, 12)
+		CLEAR_SCREEN_UP_FROM_TO 0000, 0A4Eh	;From (0,1) to (79, 10)
 		Call DisplayUsernames
 CheckReceive:
 		;Check that Transmitted Holding Register is Empty
@@ -1944,6 +2090,12 @@ CheckReceive:
 			MOV AL, InputChar
 			OUT DX, AL
 	
+			;Go Back To Main Menu
+			MOV AL, InputChar
+			CMP AL, 1BH   ;Escape ASCII
+			JNZ KeepChatting
+			CALL GoToMainMenu
+KeepChatting:	
 			Receive2:
 			;Check that Data Ready
 			MOV DX, 3FDH	;Line Status Register
@@ -1955,7 +2107,12 @@ CheckReceive:
 			MOV DX, 03F8H
 			IN AL, DX
 			MOV ReceivedChar, AL
-
+			
+			;Go back to main menu
+			CMP AL, 1BH  ;Escape ASCII
+			JNZ KeepChatting2
+			CALL GoToMainMenu
+KeepChatting2:			
 			MOV CL, P2CursorX
 			MOV CH, P2CursorY
 			MoveCursorToLocation CL, CH
@@ -1970,11 +2127,12 @@ NotBackspace2:
 			MOV P2CursorX, DL
 			MOV P2CursorY, DH
 	
-			CMP DH, 24
+			CMP DH, 23
 			JB Done2
-			MOV DH, 14
+			MOV DH, 13
 			MOV P2CursorY, DH
-			CLEAR_SCREEN_DOWN_FROM_TO 0E00h, 184Fh  ;From (0,14) to (79, 24)
+			CLEAR_SCREEN_DOWN_FROM_TO 0D00h, 184Fh  ;From (0,13) to (79, 24)
+			CALL DrawExitChat
 		Done2:	
 		JMP MYLOOP
 		RET
@@ -2025,11 +2183,11 @@ ConfigurePorts proc
 ConfigurePorts endp
 ;......................................................................................................................................................
 DisplayUsernames proc
-		MoveCursorToLocation 0, 13
+		MoveCursorToLocation 0, 12
 		ShowMessage SEC_NAME_Data
 		MOV DI, offset SEC_NAME
 		INC DI
-		MoveCursorToLocation [DI], 13
+		MoveCursorToLocation [DI], 12
 		DisplayChar ':'
 		MoveCursorToLocation 0, 0
 		ShowMessage FIR_NAME_Data
@@ -2207,13 +2365,13 @@ HandleRequests endp
 DrawMainMenu proc
 		SwitchToGraphicsMode
 		CALL DrawFrame
-		MoveCursorToLocation 14, 7
+		MoveCursorToLocation 14, 4
 		ShowMessage GameName
-		MoveCursorToLocation 7, 11
+		MoveCursorToLocation 4, 11
 		DisplayChar 4
 		DisplayChar 32
 		ShowMessage ChatMSG
-		MoveCursorToLocation 7, 13
+		MoveCursorToLocation 4, 13
 		DisplayChar 4
 		DisplayChar 32
 		ShowMessage PlayMSG
@@ -2236,18 +2394,18 @@ SelectLevels proc
 		RET
 SelectLevels endp
 ;......................................................................................................................................................
-DisplayArr1 proc
-		CALL ResetCursorToStatusBar
-		MOV DI, offset DestroyedArr1
-		MOV AL, GridSize
-		MUL AL
-		MOV CX, AX
-KeepOn:		
-		MOV AL, [DI]
-		Display2DigitNumInAX
-		INC DI
-		DEC CX
-		JNZ KeepOn
+GoToMainMenu proc
+		POP AX
+		CALL ResetVariables
+		MOV AX, 50	;IP value to go to main menu
+		PUSH AX
 		RET
-DisplayArr1 endp
+GoToMainMenu endp
+;......................................................................................................................................................
+DrawExitChat proc
+		MoveCursorToLocation 0, 23
+		ShowMessage Divider
+		ShowMessage HowToExitChat
+		RET
+DrawExitChat endp
 end
